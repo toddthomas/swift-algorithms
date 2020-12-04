@@ -291,11 +291,9 @@ final class SortedPrefixTests: XCTestCase {
     withPrefix prefixCount: Int
   ) {
     let indexed = actual.enumerated()
-    let sorted = indexed.map { $0 }.sortedPrefix(prefixCount) { $0.element < $1.element }
-
-    for element in Set(actual) {
-      let filtered = sorted.filter { $0.element == element }.map(\.offset)
-      XCTAssertEqual(filtered, filtered.sorted())
-    }
+    let testResult = indexed.map { $0 }.sortedPrefix(prefixCount) { $0.element < $1.element }
+    let expectation = indexed.sorted { $0.element < $1.element }.prefix(prefixCount)
+    
+    XCTAssertEqualSequences(testResult, expectation, by: ==)
   }
 }

@@ -56,18 +56,13 @@ extension Collection {
 
     var result = try self.prefix(prefixCount).sorted(by: areInIncreasingOrder)
     for e in self.dropFirst(prefixCount) {
-      if let last = result.last, try areInIncreasingOrder(last, e) {
+      guard let last = result.last, try areInIncreasingOrder(e, last) else {
         continue
       }
       let insertionIndex =
         try result.partitioningIndex { try areInIncreasingOrder(e, $0) }
-      let isLastElement = insertionIndex == result.endIndex
       result.removeLast()
-      if isLastElement {
-        result.append(e)
-      } else {
-        result.insert(e, at: insertionIndex)
-      }
+      result.insert(e, at: insertionIndex)
     }
 
     return result
