@@ -9,6 +9,88 @@
 //
 //===----------------------------------------------------------------------===//
 
+extension Sequence {
+  internal func _sortedPrefixImpl(
+    _ count: Int,
+    by areInIncreasingOrder: (Element, Element) throws -> Bool
+  ) rethrows -> [Element] {
+    precondition(count > 0)
+    var result: [Element] = []
+    var iterator = makeIterator()
+      
+    while result.count < count, let e = iterator.next() {
+      result.append(e)
+    }
+    try result.sort(by: areInIncreasingOrder)
+
+    while let e = iterator.next() {
+      guard let last = result.last, try areInIncreasingOrder(e, last) else {
+        continue
+      }
+      let insertionIndex =
+        try result.partitioningIndex { try areInIncreasingOrder(e, $0) }
+      result.removeLast()
+      result.insert(e, at: insertionIndex)
+    }
+
+    return result
+  }
+  
+  /// Returns the first k elements of this sequence when it's sorted using
+  /// the given predicate as the comparison between elements.
+  ///
+  /// This example partially sorts an array of integers to retrieve its three
+  /// smallest values:
+  ///
+  ///     let numbers = [7,1,6,2,8,3,9]
+  ///     let smallestThree = numbers.sortedPrefix(3, by: <)
+  ///     // [1, 2, 3]
+  ///
+  /// If you need to sort a collection but only need access to a prefix of its
+  /// elements, using this method can give you a performance boost over sorting
+  /// the entire collection. The order of equal elements is guaranteed to be
+  /// preserved.
+  ///
+  /// - Parameter count: The k number of elements to prefix.
+  /// - Parameter areInIncreasingOrder: A predicate that returns true if its
+  /// first argument should be ordered before its second argument;
+  /// otherwise, false.
+  ///
+  /// - Complexity: O(k log k + nk)
+  public func sortedPrefix(
+    _ count: Int,
+    by areInIncreasingOrder: (Element, Element) throws -> Bool
+  ) rethrows -> [Element] {
+    return count == 0
+      ? []
+      : try _sortedPrefixImpl(count, by: areInIncreasingOrder)
+  }
+}
+
+extension Sequence where Element: Comparable {
+  /// Returns the first k elements of this sequence when it's sorted in
+  /// ascending order.
+  ///
+  /// This example partially sorts an array of integers to retrieve its three
+  /// smallest values:
+  ///
+  ///     let numbers = [7,1,6,2,8,3,9]
+  ///     let smallestThree = numbers.sortedPrefix(3)
+  ///     // [1, 2, 3]
+  ///
+  /// If you need to sort a collection but only need access to a prefix of its
+  /// elements, using this method can give you a performance boost over sorting
+  /// the entire collection. The order of equal elements is guaranteed to be
+  /// preserved.
+  ///
+  /// - Parameter count: The k number of elements to prefix.
+  ///
+  /// - Complexity: O(k log k + nk)
+  public func sortedPrefix(_ count: Int) -> [Element] {
+    sortedPrefix(count, by: <)
+  }
+}
+
 extension Collection {
   /// Returns the first k elements of this collection when it's sorted using
   /// the given predicate as the comparison between elements.
@@ -54,18 +136,7 @@ extension Collection {
       return Array(try sorted(by: areInIncreasingOrder).prefix(prefixCount))
     }
 
-    var result = try self.prefix(prefixCount).sorted(by: areInIncreasingOrder)
-    for e in self.dropFirst(prefixCount) {
-      guard let last = result.last, try areInIncreasingOrder(e, last) else {
-        continue
-      }
-      let insertionIndex =
-        try result.partitioningIndex { try areInIncreasingOrder(e, $0) }
-      result.removeLast()
-      result.insert(e, at: insertionIndex)
-    }
-
-    return result
+    return try _sortedPrefixImpl(prefixCount, by: areInIncreasingOrder)
   }
 }
 
